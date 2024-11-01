@@ -1,11 +1,12 @@
+import os
 import sys
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QWidget, QSystemTrayIcon, QHBoxLayout, QLabel
+from PyQt5.QtWidgets import QApplication, QWidget, QSystemTrayIcon, QHBoxLayout, QLabel, QAction
 
 from qfluentwidgets import StyleSheetBase, Enum, Action, SystemTrayMenu, MessageBox, setTheme, Theme, qconfig
-
+from android_helper import get_emulator_path, get_available_emulators, launch_emulator
 
 class StyleSheet(StyleSheetBase, Enum):
     """ Style sheet  """
@@ -21,13 +22,24 @@ class SystemTrayIcon(QSystemTrayIcon):
         self.setToolTip('LaunchLab')
 
         self.menu = SystemTrayMenu(parent=parent)
-        self.menu.addActions([
-            Action('🎤   唱'),
-            Action('🕺   跳'),
-            Action('🤘🏼   RAP'),
-            Action('🎶   Music'),
-            Action('🏀   篮球', triggered=self.ikun),
-        ])
+        default_actions = [
+            Action('Help'),
+            Action('About')
+        ]
+
+        emulator_path = get_emulator_path()
+        if emulator_path:
+            emulators = get_available_emulators(emulator_path)
+            for emulator in emulators:
+                action = QAction(emulator, self)
+                action.triggered.connect(lambda checked, em=emulator: launch_emulator(emulator, emulator_path))
+                self.menu.addAction(action)
+
+            self.menu.addActions(default_actions)
+        else:
+            self.menu.addAction(Action('No emulator found'))
+            self.menu.addActions(default_actions)
+
         self.setContextMenu(self.menu)
 
     def ikun(self):
@@ -67,12 +79,11 @@ class App(QWidget):
         self.layout().addWidget(self.label)
 
         self.setStyleSheet('Demo{background: white} QLabel{font-size: 20px}')
-        self.setWindowIcon(QIcon('assets/LaunchLab.png'))
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'assets', 'LaunchLab.png')
+        self.setWindowIcon(QIcon(icon_path))
 
         self.systemTrayIcon = SystemTrayIcon(self)
         self.systemTrayIcon.show()
-
-
 
 if __name__ == '__main__':
     # enable dpi scale
@@ -82,5 +93,4 @@ if __name__ == '__main__':
 
     QTApp = QApplication(sys.argv)
     app = App()
-    app.show()
     QTApp.exec_()
